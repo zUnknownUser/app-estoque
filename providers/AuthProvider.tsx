@@ -17,11 +17,13 @@ type Tokens = {
   expiresAt?: number; // epoch ms
 };
 
+type SignInOpts = { forceReauth?: boolean; selectAccount?: boolean };
+
 type AuthContextType = {
   isLoading: boolean;
   isAuthenticated: boolean;
   tokens?: Tokens | null;
-  signIn: () => Promise<void>;
+  signIn: (opts?: SignInOpts) => Promise<void>;
   signOut: () => Promise<void>;
   refreshIfNeeded: () => Promise<void>;
 };
@@ -41,7 +43,6 @@ const extra =
   ((Constants as any).manifest?.extra as any) ||
   {};
 
-
 const rawScheme =
   (Constants.expoConfig as any)?.scheme ??
   ((Constants as any).manifest?.scheme as unknown);
@@ -56,16 +57,14 @@ const issuer =
 const clientId =
   (process.env.EXPO_PUBLIC_KEYCLOAK_CLIENT_ID as string) ||
   (extra?.keycloakClientId as string) ||
-  ''; 
+  '';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-
   const discovery = AuthSession.useAutoDiscovery(issuer || 'about:blank');
 
   const [tokens, setTokens] = useState<Tokens | null>(null);
   const [isLoading, setLoading] = useState(true);
 
- 
   useEffect(() => {
     (async () => {
       try {
@@ -86,61 +85,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = useCallback(async () => {
-    if (!issuer || !clientId) {
-      throw new Error(
-        'Config de Keycloak ausente: defina keycloakIssuer e keycloakClientId no app.json (ou via EXPO_PUBLIC_*).'
-      );
-    }
-    if (!discovery?.authorizationEndpoint) {
-      throw new Error(
-        'Discovery inválido. Abra a URL /.well-known/openid-configuration do issuer no navegador e verifique.'
-      );
-    }
+  const signIn = useCallback(
+    async (opts?: SignInOpts) => {
+      if (!issuer || !clientId) {
+        throw new Error(
+          'Config de Keycloak ausente: defina keycloakIssuer e keycloakClientId no app.json (ou via EXPO_PUBLIC_*).'
+        );
+      }
+      if (!discovery?.authorizationEndpoint) {
+        throw new Error(
+          'Discovery inválido. Abra a URL /.well-known/openid-configuration do issuer no navegador e verifique.'
+        );
+      }
+
+      const redirectUri = AuthSession.makeRedirectUri({ scheme });
+      console.log('>>>> URI DE REDIRECIONAMENTO GERADA PELO EXPO:', redirectUri);
+
+      const request = new AuthSession.AuthRequest({
+        clientId,
+        responseType: AuthSession.ResponseType.Code,
+        scopes: ['openid', 'profile', 'email'],
+        usePKCE: true,
+        redirectUri,
+      });
+
+ 
+      const extraParams: Record<string, string> = {};
+      if (opts?.forceReauth) {
+        extraParams.prompt = 'login';
+        extraParams.max_age = '0';
+      } else if (opts?.selectAccount) {
+        extraParams.prompt = 'select_account';
+      }
 
    
-    const redirectUri = AuthSession.makeRedirectUri({
-      scheme,
-     
-    });
-    console.log('>>>> URI DE REDIRECIONAMENTO GERADA PELO EXPO:', redirectUri);
+      await request.makeAuthUrlAsync(discovery);
 
-    const request = new AuthSession.AuthRequest({
-      clientId,
-      responseType: AuthSession.ResponseType.Code,
-      scopes: ['openid', 'profile', 'email'],
-      usePKCE: true,
-      redirectUri,
-    });
+      const result = await request.promptAsync(discovery);
+      if (result.type !== 'success' || !result.params.code) return;
 
-    await request.makeAuthUrlAsync(discovery);
+      const { accessToken, refreshToken, idToken, issuedAt, expiresIn } =
+        await AuthSession.exchangeCodeAsync(
+          {
+            code: result.params.code,
+            clientId,
+            redirectUri,
+            extraParams: { code_verifier: request.codeVerifier! },
+          },
+          discovery
+        );
 
-    
-    const result = await request.promptAsync(discovery);
-    if (result.type !== 'success' || !result.params.code) return;
+      const expiresAt =
+        (issuedAt ?? Math.floor(Date.now() / 1000)) * 1000 +
+        (expiresIn ?? 0) * 1000;
 
-    const { accessToken, refreshToken, idToken, issuedAt, expiresIn } =
-      await AuthSession.exchangeCodeAsync(
-        {
-          code: result.params.code,
-          clientId,
-          redirectUri,
-          extraParams: { code_verifier: request.codeVerifier! },
-        },
-        discovery
-      );
-
-    const expiresAt =
-      (issuedAt ?? Math.floor(Date.now() / 1000)) * 1000 +
-      (expiresIn ?? 0) * 1000;
-
-    await persist({
-      accessToken: accessToken!,
-      refreshToken: refreshToken ?? undefined,
-      idToken: idToken ?? undefined,
-      expiresAt,
-    });
-  }, [discovery]);
+      await persist({
+        accessToken: accessToken!,
+        refreshToken: refreshToken ?? undefined,
+        idToken: idToken ?? undefined,
+        expiresAt,
+      });
+    },
+    [discovery]
+  );
 
   const refreshIfNeeded = useCallback(async () => {
     if (!discovery?.tokenEndpoint || !tokens?.refreshToken) return;
@@ -161,7 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!resp.ok) {
-      
       await persist(null);
       return;
     }
@@ -177,10 +183,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [discovery, tokens]);
 
+ 
   const signOut = useCallback(async () => {
-   
-    await persist(null);
-  }, []);
+    try {
+      const redirectUri = AuthSession.makeRedirectUri({ scheme });
+
+     
+      if (discovery?.endSessionEndpoint && tokens?.refreshToken) {
+        const body = new URLSearchParams({
+          client_id: clientId,
+          refresh_token: tokens.refreshToken,
+        });
+        await fetch(discovery.endSessionEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+        }).catch(() => {});
+      } else if (issuer && tokens?.refreshToken) {
+        await fetch(`${issuer}/protocol/openid-connect/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: clientId,
+            refresh_token: tokens.refreshToken,
+          }).toString(),
+        }).catch(() => {});
+      }
+    } finally {
+      await persist(null); // limpa tokens locais sempre
+    }
+  }, [discovery?.endSessionEndpoint, issuer, clientId, tokens?.refreshToken]);
 
   const value = useMemo(
     () => ({
