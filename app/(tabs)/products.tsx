@@ -1,17 +1,16 @@
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { View, FlatList, RefreshControl, StyleSheet, Text, Pressable } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SearchBar from '@/components/ui/SearchBar';
-import StatsRow from '@/components/ui/StatsRow';
 import ProductCard from '@/components/ui/ProductCard';
-import LogoutButton from '@/components/ui/LogoutButton'; 
+import StatsRow from '@/components/ui/StatsRow';
 import { colors } from '@/constants/theme';
 import { useProducts } from '@/store/products';
 import { LOW_STOCK_THRESHOLD } from '@/constants/inventory';
 
-export default function HomeScreen() {
+export default function ProductsTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { products, fetch, loading } = useProducts();
@@ -33,11 +32,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Estoque' }} />
-
-        {}
-        <LogoutButton />
-
+        <Stack.Screen options={{ title: 'Produtos', headerShown: false }} />
         <SearchBar value={q} onChange={setQ} />
         <StatsRow totalProducts={totalProducts} totalUnits={totalUnits} lowCount={lowCount} />
 
@@ -69,7 +64,6 @@ export default function HomeScreen() {
             { bottom: 28 + insets.bottom },
             pressed && { opacity: 0.9 },
           ]}
-          accessibilityLabel="Cadastrar novo produto"
         >
           <Text style={styles.fabText}>＋</Text>
         </Pressable>
@@ -84,7 +78,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    backgroundColor: colors.primary,
+    backgroundColor: '#2563eb',
     width: 56,
     height: 56,
     borderRadius: 28,
