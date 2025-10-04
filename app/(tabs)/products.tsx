@@ -8,7 +8,7 @@ import ProductCard from '@/components/ui/ProductCard';
 import { colors } from '@/constants/theme';
 import { useProducts } from '@/store/products';
 
-type Filter = 'all' | 'active' | 'archived';
+type Filter = 'all' | 'active';
 type SortKey = 'name' | 'priceAsc' | 'priceDesc' | 'recent';
 
 export default function ProductsTab() {
@@ -30,7 +30,7 @@ export default function ProductsTab() {
     const list = (products ?? []).filter((p) => {
       const matches = term.length === 0 || p.name.toLowerCase().includes(term);
       const archived = Boolean((p as any).archived);
-      const byFilter = filter === 'all' ? true : filter === 'archived' ? archived : !archived;
+      const byFilter = filter === 'all' ? true : !archived; // só “ativos” quando filter === 'active'
       return matches && byFilter;
     });
 
@@ -56,14 +56,10 @@ export default function ProductsTab() {
 
   const sortLabel = useMemo(() => {
     switch (sort) {
-      case 'name':
-        return 'Nome';
-      case 'priceAsc':
-        return 'Preço ↑';
-      case 'priceDesc':
-        return 'Preço ↓';
-      case 'recent':
-        return 'Recentes';
+      case 'name': return 'Nome';
+      case 'priceAsc': return 'Preço ↑';
+      case 'priceDesc': return 'Preço ↓';
+      case 'recent': return 'Recentes';
     }
   }, [sort]);
 
@@ -99,21 +95,18 @@ export default function ProductsTab() {
               style={[styles.chip, filter === 'all' && styles.chipActive]}
               hitSlop={8}
             >
-              <Text style={[styles.chipText, filter === 'all' && styles.chipTextActive]}>Todos</Text>
+              <Text style={[styles.chipText, filter === 'all' && styles.chipTextActive]}>
+                Todos
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setFilter('active')}
               style={[styles.chip, filter === 'active' && styles.chipActive]}
               hitSlop={8}
             >
-              <Text style={[styles.chipText, filter === 'active' && styles.chipTextActive]}>Ativos</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setFilter('archived')}
-              style={[styles.chip, filter === 'archived' && styles.chipActive]}
-              hitSlop={8}
-            >
-              <Text style={[styles.chipText, filter === 'archived' && styles.chipTextActive]}>Arquivados</Text>
+              <Text style={[styles.chipText, filter === 'active' && styles.chipTextActive]}>
+                Ativos
+              </Text>
             </Pressable>
           </View>
 
