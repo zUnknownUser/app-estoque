@@ -37,7 +37,7 @@
     ],
     "experiments": { "typedRoutes": true, "reactCompiler": true },
     "extra": {
-      "keycloakIssuer": "http:/192.168.0.13:8080/realms/estoque", 
+      "keycloakIssuer": "https://developed-virgina-lucasamorim78c-83e71c1a.koyeb.app/realms/estoque",
       "keycloakClientId": "app-mobile"
     }
   }

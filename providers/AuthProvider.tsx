@@ -14,7 +14,7 @@ type Tokens = {
   accessToken: string;
   refreshToken?: string;
   idToken?: string;
-  expiresAt?: number; // epoch ms
+  expiresAt?: number;
 };
 
 type SignInOpts = { forceReauth?: boolean; selectAccount?: boolean };
@@ -42,13 +42,6 @@ const extra =
   (Constants.expoConfig?.extra as any) ||
   ((Constants as any).manifest?.extra as any) ||
   {};
-
-const rawScheme =
-  (Constants.expoConfig as any)?.scheme ??
-  ((Constants as any).manifest?.scheme as unknown);
-const scheme: string = Array.isArray(rawScheme)
-  ? rawScheme[0]
-  : (rawScheme as string) || 'estoqueapp';
 
 const issuer =
   (process.env.EXPO_PUBLIC_KEYCLOAK_ISSUER as string) ||
@@ -98,8 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      const redirectUri = AuthSession.makeRedirectUri({ scheme });
-      console.log('>>>> URI DE REDIRECIONAMENTO GERADA PELO EXPO:', redirectUri);
+      const redirectUri = AuthSession.makeRedirectUri({ useProxy: true } as any);
+      console.log('>>>> REDIRECT via Expo Proxy:', redirectUri);
 
       const request = new AuthSession.AuthRequest({
         clientId,
@@ -109,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectUri,
       });
 
- 
       const extraParams: Record<string, string> = {};
       if (opts?.forceReauth) {
         extraParams.prompt = 'login';
@@ -118,10 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         extraParams.prompt = 'select_account';
       }
 
-   
       await request.makeAuthUrlAsync(discovery);
 
-      const result = await request.promptAsync(discovery);
+      const result = await (request.promptAsync as any)(discovery, { useProxy: true });
       if (result.type !== 'success' || !result.params.code) return;
 
       const { accessToken, refreshToken, idToken, issuedAt, expiresIn } =
@@ -153,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!discovery?.tokenEndpoint || !tokens?.refreshToken) return;
 
     const now = Date.now();
-    if (tokens.expiresAt && now < tokens.expiresAt - 30_000) return; // 30s de folga
+    if (tokens.expiresAt && now < tokens.expiresAt - 30_000) return;
 
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -183,12 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [discovery, tokens]);
 
- 
   const signOut = useCallback(async () => {
     try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme });
-
-     
       if (discovery?.endSessionEndpoint && tokens?.refreshToken) {
         const body = new URLSearchParams({
           client_id: clientId,
@@ -210,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }).catch(() => {});
       }
     } finally {
-      await persist(null); // limpa tokens locais sempre
+      await persist(null);
     }
   }, [discovery?.endSessionEndpoint, issuer, clientId, tokens?.refreshToken]);
 
@@ -226,9 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [isLoading, tokens, signIn, signOut, refreshIfNeeded]
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

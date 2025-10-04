@@ -1,0 +1,29 @@
+{
+  "realm": "estoque",
+  "enabled": true,
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "app-mobile",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "secret": "",
+      "redirectUris": ["estoqueapp://redirect", "estoqueapp://*"],
+      "webOrigins": [],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+    }
+  ]
+}

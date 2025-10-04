@@ -6,7 +6,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import SearchBar from '@/components/ui/SearchBar';
 import StatsRow from '@/components/ui/StatsRow';
 import ProductCard from '@/components/ui/ProductCard';
-import LogoutButton from '@/components/ui/LogoutButton'; 
 import { colors } from '@/constants/theme';
 import { useProducts } from '@/store/products';
 import { LOW_STOCK_THRESHOLD } from '@/constants/inventory';
@@ -33,13 +32,19 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Estoque' }} />
+        <Stack.Screen options={{ headerShown: false }} />
 
-        {}
-        <LogoutButton />
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>Estoque</Text>
+        </View>
 
-        <SearchBar value={q} onChange={setQ} />
-        <StatsRow totalProducts={totalProducts} totalUnits={totalUnits} lowCount={lowCount} />
+        <View style={styles.searchWrap}>
+          <SearchBar value={q} onChange={setQ} />
+        </View>
+
+        <View style={styles.statsWrap}>
+          <StatsRow totalProducts={totalProducts} totalUnits={totalUnits} lowCount={lowCount} />
+        </View>
 
         {products.length === 0 && !loading ? (
           <Text style={styles.empty}>Nenhum produto. Toque em “+” para adicionar.</Text>
@@ -49,7 +54,7 @@ export default function HomeScreen() {
             data={products}
             keyExtractor={(i) => i.id}
             renderItem={({ item }) => (
-              <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+              <View style={{ paddingVertical: 6 }}>
                 <ProductCard
                   item={item}
                   onPress={() =>
@@ -79,7 +84,11 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 8 },
+  container: { flex: 1, paddingTop: 24, paddingHorizontal: 20, paddingBottom: 20 },
+  pageHeader: { marginBottom: 12 },
+  pageTitle: { fontSize: 22, fontWeight: '800' },
+  searchWrap: { marginBottom: 10 },
+  statsWrap: { marginBottom: 8 },
   empty: { textAlign: 'center', color: '#6b7280', marginTop: 20 },
   fab: {
     position: 'absolute',
