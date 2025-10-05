@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
@@ -20,181 +19,275 @@ import { useAuth } from '@/providers/AuthProvider';
 import PrimaryButton from '@/components/ui/PrimaryButton';
 import { colors } from '@/constants/theme';
 
-
-
 export default function AuthScreen() {
   const { signIn, isLoading } = useAuth();
 
-  // lê issuer do app.json e extrai host p/ mostrar no rodapé
-  const issuer: string =
-    (Constants.expoConfig?.extra as any)?.keycloakIssuer ??
-    ((Constants as any).manifest?.extra as any)?.keycloakIssuer ??
-    '';
-  const issuerHost = useMemo(() => {
-    try {
-      return issuer ? new URL(issuer).host : '—';
-    } catch {
-      return '—';
-    }
-  }, [issuer]);
-
-  // animações: entrada + flutuação do ícone
-  const fade = useRef(new Animated.Value(0)).current;
-  const translate = useRef(new Animated.Value(16)).current;
-  const bob = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(12)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
-      Animated.timing(translate, { toValue: 0, duration: 400, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+      Animated.timing(fadeIn, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideUp, {
+        toValue: 0,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(bob, { toValue: -4, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
-        Animated.timing(bob, { toValue: 0, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
       ])
     ).start();
-  }, [fade, translate, bob]);
+  }, [fadeIn, slideUp, pulse]);
+
+  const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.65, 0.9] });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0b1220' }} edges={['top']}>
       <Stack.Screen options={{ title: 'Login' }} />
 
-      {/* Gradiente de topo */}
       <LinearGradient
-        colors={['#eaf1ff', '#fff']}
-        start={{ x: 0, y: 0 }}
+        colors={['#0b1220', '#0b1220']}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={['rgba(59,130,246,0.30)', 'rgba(139,92,246,0.20)', 'transparent']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.bgAccentTop}
+      />
+      <LinearGradient
+        colors={['rgba(99,102,241,0.25)', 'rgba(16,185,129,0.18)', 'transparent']}
+        start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.gradient}
+        style={styles.bgAccentBottom}
       />
 
-      {/* Hero */}
-      <Animated.View style={[styles.hero, { opacity: fade, transform: [{ translateY: translate }] }]}>
-        <Animated.View style={[styles.iconWrap, { transform: [{ translateY: bob }] }]} accessibilityLabel="Ícone do aplicativo">
-          <Ionicons name="cube-outline" size={28} color="#111827" />
-        </Animated.View>
-        <Text style={styles.title}>Estoque Mobile</Text>
-        <Text style={styles.subtitle}>
-          Gerencie seus produtos, estoque e relatórios de forma simples e rápida.
-        </Text>
-      </Animated.View>
-
-      {/* Card central com blur (glass) */}
-      <Animated.View style={[styles.cardShadow, { opacity: fade, transform: [{ translateY: translate }] }]}>
-        <BlurView intensity={35} tint="light" style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
-            <Text style={styles.cardHeaderText}>Autenticação segura</Text>
-          </View>
-
-          <Text style={styles.desc}>
-            Faça login para continuar. Usamos Keycloak com PKCE para manter sua sessão segura.
-          </Text>
-
-          <PrimaryButton
-            title={isLoading ? 'Abrindo...' : 'Entrar com Keycloak'}
-            onPress={signIn}
-            disabled={isLoading}
-            accessibilityLabel="Entrar com Keycloak"
-            style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.98 : 1 }] }]}
-          />
-
-          {isLoading ? (
-            <View style={styles.loadingWrap} accessible accessibilityLabel="Carregando">
-              <ActivityIndicator />
-              <Text style={styles.loadingText}>Inicializando autenticação…</Text>
-            </View>
-          ) : null}
-
-          {/* links úteis */}
-          <View style={styles.linksRow}>
-            <Text style={styles.link} onPress={() => Linking.openURL('https://www.keycloak.org/')}>
-              O que é Keycloak?
-            </Text>
-            <Text
-              style={styles.link}
-              onPress={() =>
-                Linking.openURL(
-                  Platform.select({
-                    ios: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
-                    android: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
-                    default: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
-                  })!
-                )
-              }
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.hero,
+            { opacity: fadeIn, transform: [{ translateY: slideUp }] },
+          ]}
+        >
+          <View style={styles.glassRingOuter}>
+            <LinearGradient
+              colors={['#60a5fa', '#a78bfa', '#34d399']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.ringGradient}
             >
-              Ajuda do login
-            </Text>
-          </View>
-        </BlurView>
-      </Animated.View>
+              <BlurView intensity={40} tint="light" style={styles.ringGlass} />
+            </LinearGradient>
 
-      {/* Rodapé / ambiente */}
-      <View style={styles.footer}>
-        <View style={styles.badge}>
-          <Ionicons name="cloud-outline" size={14} color="#2563eb" />
-          <Text style={styles.badgeText}>{issuerHost}</Text>
-        </View>
-        <Text style={styles.footerMuted}>
-          Dica: no Expo Go, o redirecionamento usa o <Text style={{ fontWeight: '700', color: '#111827' }}>auth.expo.dev</Text>.
-        </Text>
+            <Animated.View
+              style={[
+                styles.glow,
+                { opacity: glowOpacity, transform: [{ scale: glowScale }] },
+              ]}
+            />
+
+            <View style={styles.iconBadge}>
+              <Ionicons name="cube-outline" size={28} color="#0b1220" />
+            </View>
+          </View>
+
+          <Text style={styles.title}>Estoque Mobile</Text>
+          <Text style={styles.subtitle}>
+            Controle, edite e acompanhe seu estoque com praticidade.
+          </Text>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.cardShadow,
+            { opacity: fadeIn, transform: [{ translateY: slideUp }] },
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.10)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardBorder}
+          >
+            <BlurView intensity={28} tint="light" style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="shield-checkmark-outline" size={18} color="#2563eb" />
+                <Text style={styles.cardHeaderText}>Autenticação segura</Text>
+              </View>
+
+              <Text style={styles.desc}>
+                Faça login para continuar. O fluxo usa Keycloak com PKCE.
+              </Text>
+
+              <PrimaryButton
+                title={isLoading ? 'Abrindo…' : 'Entrar com Keycloak'}
+                onPress={signIn}
+                disabled={isLoading}
+                accessibilityLabel="Entrar com Keycloak"
+                style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+              />
+
+              {isLoading ? (
+                <View style={styles.loadingWrap} accessible accessibilityLabel="Carregando">
+                  <ActivityIndicator />
+                  <Text style={styles.loadingText}>Inicializando autenticação…</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.linksRow}>
+                <Text
+                  style={styles.link}
+                  onPress={() =>
+                    Linking.openURL(
+                      Platform.select({
+                        ios: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
+                        android: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
+                        default: 'https://docs.expo.dev/guides/authentication/#redirect-urls',
+                      })!
+                    )
+                  }
+                >
+                  Ajuda do login
+                </Text>
+              </View>
+            </BlurView>
+          </LinearGradient>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
 }
 
-const CARD_RADIUS = 16;
+const CARD_RADIUS = 18;
 
 const styles = StyleSheet.create({
-  gradient: {
-    ...StyleSheet.absoluteFillObject,
-    height: 240,
-  },
-  hero: {
-    paddingTop: 16,
+  container: {
+    flex: 1,
     paddingHorizontal: 20,
-    alignItems: 'center',
-    gap: 8,
+    paddingTop: 24,
+    paddingBottom: 20,
+    justifyContent: 'center',
   },
-  iconWrap: {
-    height: 56,
-    width: 56,
-    borderRadius: 14,
-    backgroundColor: '#E6F0FE',
+
+  bgAccentTop: {
+    position: 'absolute',
+    top: -140,
+    left: -110,
+    width: 320,
+    height: 320,
+    borderRadius: 320,
+    opacity: 0.8,
+    filter: 'blur(40px)' as any,
+  },
+  bgAccentBottom: {
+    position: 'absolute',
+    bottom: -160,
+    right: -120,
+    width: 360,
+    height: 360,
+    borderRadius: 360,
+    opacity: 0.7,
+    filter: 'blur(48px)' as any,
+  },
+
+  hero: {
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 18,
+  },
+
+  glassRingOuter: {
+    width: 86,
+    height: 86,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 4,
+    marginBottom: 6,
   },
+  ringGradient: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: 999,
+    opacity: 0.9,
+  },
+  ringGlass: {
+    position: 'absolute',
+    inset: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+  },
+  glow: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    backgroundColor: 'rgba(99,102,241,0.25)',
+    filter: 'blur(24px)' as any,
+  },
+  iconBadge: {
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#60a5fa',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#111827',
+    color: '#f8fafc',
+    letterSpacing: 0.2,
   },
   subtitle: {
     textAlign: 'center',
-    color: '#6b7280',
+    color: '#cbd5e1',
     lineHeight: 20,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
   },
 
   cardShadow: {
-    marginTop: 18,
-    marginHorizontal: 20,
-    borderRadius: CARD_RADIUS,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.18,
+    shadowRadius: 30,
+    elevation: 8,
+  },
+  cardBorder: {
+    borderRadius: CARD_RADIUS,
+    padding: 1.2,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.66)',
     borderRadius: CARD_RADIUS,
     borderWidth: 1,
     borderColor: 'rgba(229,231,235,0.7)',
@@ -202,6 +295,7 @@ const styles = StyleSheet.create({
     gap: 12,
     overflow: 'hidden',
   },
+
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,10 +304,10 @@ const styles = StyleSheet.create({
   },
   cardHeaderText: {
     fontWeight: '700',
-    color: '#111827',
+    color: '#0b1220',
   },
   desc: {
-    color: '#6b7280',
+    color: '#334155',
     marginBottom: 4,
   },
 
@@ -223,43 +317,15 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 6,
   },
-  loadingText: {
-    color: '#6b7280',
-  },
+  loadingText: { color: '#475569' },
 
   linksRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 8,
   },
   link: {
     color: colors.primary,
-    fontWeight: '600',
-  },
-
-  footer: {
-    marginTop: 'auto',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: 'center',
-    gap: 6,
-  },
-  badge: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-  },
-  badgeText: { color: '#1e40af', fontWeight: '700' },
-  footerMuted: {
-    color: '#9ca3af',
-    fontSize: 12,
-    textAlign: 'center',
+    fontWeight: '700',
   },
 });
-
