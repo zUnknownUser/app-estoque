@@ -1,4 +1,4 @@
-# Estoque Mobile — README (Curto)
+# Estoque Mobile — README 
 
 > App **React Native + Expo + TypeScript** para gestão de estoque.  
 > Login via **Keycloak (OIDC + PKCE)** hospedado externamente — roda em qualquer máquina.
