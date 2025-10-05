@@ -1,50 +1,69 @@
-# Welcome to your Expo app 👋
+# Estoque Mobile — README (Curto)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> App **React Native + Expo + TypeScript** para gestão de estoque.  
+> Login via **Keycloak (OIDC + PKCE)** hospedado externamente — roda em qualquer máquina.
 
-## Get started
+---
 
-1. Install dependencies
+## 1) Visão Geral
+- **Expo + expo-router**, **TypeScript**
+- **SQLite** (persistência local) • **react-hook-form + zod** (validação)
+- **Auth**: Keycloak com **expo-auth-session** (Proxy da Expo) e **SecureStore**
+- **Design**: componentes reutilizáveis e UX consistente
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## 2) Como Rodar
 ```bash
-npm run reset-project
-```
+npm install
+npx expo start -c
+# depois: a (Android) | i (iOS) | escaneie o QR no Expo Go
+Login demo
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Usuário: demo
+Senha: demo
 
-## Learn more
+O login usa auth.expo.dev (Proxy da Expo), então não depende de IP/porta local.
 
-To learn more about developing your project with Expo, look at the following resources:
+3) Configuração (já no repo)
+app.json:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+json
+{
+  "expo": {
+    "scheme": "estoqueapp",
+    "extra": {
+      "keycloakIssuer": "https://SUBDOMINIO.koyeb.app/realms/estoque",
+      "keycloakClientId": "app-mobile"
+    }
+  }
+}
+Keycloak (client app-mobile)
 
-## Join the community
+Public client • Standard Flow ON • PKCE S256
 
-Join our community of developers creating universal apps.
+Valid Redirect URIs: https://auth.expo.dev/*
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Post Logout Redirect URIs: https://auth.expo.dev/*
+
+Web origins: https://auth.expo.dev
+
+4) Funcionalidades
+Cadastrar, listar (busca/ordenação), editar, ajustar estoque (+1/−1) (não-negativo), excluir
+
+Relatórios: totais, itens com estoque baixo, valor total, preço médio
+
+Configurações: versão do app e logout
+
+5) Roteiro de Teste
+Login demo/demo
+
+Cadastrar produto
+
+Buscar/ordenar
+
+Editar e ajustar estoque
+
+Conferir Relatórios
+
+Excluir e Logout
